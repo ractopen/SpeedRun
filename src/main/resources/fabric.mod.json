@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "speedrun-tracker",
+  "version": "${version}",
+  "name": "SpeedRun?",
+  "description": "Lightweight attempt counter, stopwatch, and fast reset utility for Fabric.",
+  "authors": [
+    "ractopen"
+  ],
+  "contact": {
+    "sources": "https://github.com/ractopen/SpeedRun",
+    "homepage": "https://github.com/ractopen/SpeedRun"
+  },
+  "license": "MIT",
+  "icon": "assets/speedrun-tracker/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.ryme.speedrun.SpeedrunTracker"
+    ],
+    "client": [
+      "com.ryme.speedrun.client.SpeedrunClient"
+    ],
+    "modmenu": [
+      "com.ryme.speedrun.integration.SpeedrunModMenu"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": ">=26.1",
+    "fabric-api-base": "*"
+  },
+  "suggests": {
+    "worldreset": "*",
+    "tab": "*",
+    "modmenu": "*"
+  }
+}
