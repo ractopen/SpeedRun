@@ -26,8 +26,9 @@ public class SpeedrunConfig {
 
     public static class TimerConfig {
         public String mode = "BOTH"; // "BOTH", "IGT", or "RTA"
-        public int updateRateTicks = 10; // Twice per second (skips 9 out of 10 ticks)
+        public int updateRateTicks = 2; // Update rate in ticks (2 ticks = 10 updates/sec for smooth milliseconds)
         public boolean waitForFirstInput = false; // If true, IGT waits until player moves
+        public boolean showMilliseconds = true; // Display milliseconds (.xxx)
     }
 
     public static class BehaviorConfig {

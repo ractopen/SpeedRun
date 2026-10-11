@@ -99,6 +99,17 @@ public class SpeedrunModMenu implements ModMenuApi {
             ).bounds(x, y, buttonWidth, 20).build());
             y += 22;
 
+            // Milliseconds display (.xxx)
+            addRenderableWidget(Button.builder(
+                Component.literal("Milliseconds (.xxx): " + (SpeedrunTracker.config.timer.showMilliseconds ? "§aEnabled" : "§7Disabled")),
+                btn -> {
+                    SpeedrunTracker.config.timer.showMilliseconds = !SpeedrunTracker.config.timer.showMilliseconds;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Milliseconds (.xxx): " + (SpeedrunTracker.config.timer.showMilliseconds ? "§aEnabled" : "§7Disabled")));
+                }
+            ).bounds(x, y, buttonWidth, 20).build());
+            y += 22;
+
             // Template difficulty
             Button diffBtn = Button.builder(
                 Component.literal("Template Difficulty: §e" + SpeedrunTracker.config.template.difficulty),

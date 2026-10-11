@@ -254,21 +254,32 @@ public class SpeedrunTracker implements ModInitializer {
             input = input.substring(0, input.length() - 1);
         }
         try {
+            long extraMillis = 0;
+            if (input.contains(".")) {
+                String[] dotParts = input.split("\\.");
+                input = dotParts[0];
+                if (dotParts.length > 1) {
+                    String msStr = dotParts[1];
+                    if (msStr.length() == 1) extraMillis = Long.parseLong(msStr) * 100;
+                    else if (msStr.length() == 2) extraMillis = Long.parseLong(msStr) * 10;
+                    else if (msStr.length() >= 3) extraMillis = Long.parseLong(msStr.substring(0, 3));
+                }
+            }
             if (input.contains(":")) {
                 String[] parts = input.split(":");
                 if (parts.length == 2) {
                     long m = Long.parseLong(parts[0]);
                     long s = Long.parseLong(parts[1]);
-                    return (m * 60 + s) * 1000L;
+                    return (m * 60 + s) * 1000L + extraMillis;
                 } else if (parts.length == 3) {
                     long h = Long.parseLong(parts[0]);
                     long m = Long.parseLong(parts[1]);
                     long s = Long.parseLong(parts[2]);
-                    return (h * 3600 + m * 60 + s) * 1000L;
+                    return (h * 3600 + m * 60 + s) * 1000L + extraMillis;
                 }
             } else {
                 long s = Long.parseLong(input);
-                return s * 1000L;
+                return s * 1000L + extraMillis;
             }
         } catch (NumberFormatException ignored) {}
         return -1L;
@@ -327,14 +338,27 @@ public class SpeedrunTracker implements ModInitializer {
         return formatTimeMillis(igtTicks * 50L);
     }
 
-    private static String formatTimeMillis(long millis) {
+    public static String formatTimeMillis(long millis) {
+        boolean showMs = config != null && config.timer != null && config.timer.showMilliseconds;
+        return formatTimeMillis(millis, showMs);
+    }
+
+    public static String formatTimeMillis(long millis, boolean showMillis) {
+        long ms = millis % 1000;
         long seconds = (millis / 1000) % 60;
         long minutes = (millis / (1000 * 60)) % 60;
         long hours = (millis / (1000 * 60 * 60));
-        if (hours > 0) {
-            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        if (showMillis) {
+            if (hours > 0) {
+                return String.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, ms);
+            }
+            return String.format("%02d:%02d.%03d", minutes, seconds, ms);
+        } else {
+            if (hours > 0) {
+                return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+            }
+            return String.format("%02d:%02d", minutes, seconds);
         }
-        return String.format("%02d:%02d", minutes, seconds);
     }
 
     private void registerCommands() {
@@ -433,6 +457,17 @@ public class SpeedrunTracker implements ModInitializer {
                             config.timer.waitForFirstInput = enabled;
                             config.save();
                             ctx.getSource().sendSuccess(() -> Component.literal("§bWait for first move: " + (enabled ? "§aEnabled" : "§cDisabled")), true);
+                            return 1;
+                        })
+                    )
+                )
+                .then(Commands.literal("millis")
+                    .then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> {
+                            boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+                            config.timer.showMilliseconds = enabled;
+                            config.save();
+                            ctx.getSource().sendSuccess(() -> Component.literal("§bMilliseconds display: " + (enabled ? "§aEnabled" : "§cDisabled")), true);
                             return 1;
                         })
                     )
