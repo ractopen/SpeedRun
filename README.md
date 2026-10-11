@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/main/resources/assets/speedrun-tracker/logo.png" alt="SpeedRun?" width="400"/>
+<img src="https://raw.githubusercontent.com/ractopen/SpeedRun/main/src/main/resources/assets/speedrun-tracker/logo.png" alt="SpeedRun?" width="400"/>
 
 <p>Minimalist attempt counter, stopwatch, and fast reset utility for Fabric Minecraft.</p>
 
