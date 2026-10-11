@@ -12,15 +12,6 @@
 
 </div>
 
----
-
-## Supported Versions
-
-| Minecraft Version | Fabric Loader | Java Runtime | Status |
-| :--- | :--- | :--- | :--- |
-| **26.3** | `>=0.15.0` | 25 | Verified (Active Target) |
-| **26.2** | `>=0.15.0` | 25 | Supported |
-| **26.1** | `>=0.15.0` | 25 | Supported |
 
 ---
 
@@ -135,6 +126,16 @@ String time = SpeedrunAPI.getFormattedTime();
 ## Version
 
 Current release: `v0.1.0-beta`
+
+---
+
+## Supported Versions
+
+| Minecraft Version | Fabric Loader | Java Runtime |
+| :--- | :--- | :--- |
+| **26.3** | `>=0.15.0` | 25 |
+| **26.2** | `>=0.15.0` | 25 |
+| **26.1** | `>=0.15.0` | 25 |
 
 ---
 
