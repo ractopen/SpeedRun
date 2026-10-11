@@ -125,16 +125,24 @@ String time = SpeedrunAPI.getFormattedTime();
 
 ## Frequently Asked Questions
 
-### Does this mod work on dedicated servers or LAN?
-Yes. SpeedRun? operates seamlessly across singleplayer, LAN, and dedicated Fabric servers:
+<details>
+<summary><b>Does this mod work on dedicated servers or LAN?</b></summary>
+<br>
+
+SpeedRun? operates seamlessly across singleplayer, LAN, and dedicated Fabric servers:
 * **Server-side installation**: The server manages attempt state, timers, world resets, dragon defeat triggers, and can broadcast timer/attempt updates to connected players via the action bar or chat.
 * **Client-side installation**: Provides full access to the in-game Mod Menu configuration GUI, keybindings, and client-specific HUD options.
+</details>
 
-### What happens if a player joins without the mod installed?
+<details>
+<summary><b>What happens if a player joins without the mod installed?</b></summary>
+<br>
+
 SpeedRun? is completely client-optional for multiplayer servers:
 * **Vanilla Client Compatibility**: Players running unmodded vanilla Minecraft can join the server without any errors or disconnects.
 * **HUD & Placeholders**: Vanilla clients receive real-time attempt and stopwatch information via native Minecraft action bar packets, chat messages, and TAB list headers/footers.
 * **Controls & Reset Triggers**: Vanilla players can interact using standard in-game commands (`/attempts`, `/timer`), while graphical Mod Menu configuration screens remain exclusive to clients that have the mod loaded.
+</details>
 
 ---
 
