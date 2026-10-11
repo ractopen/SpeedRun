@@ -11,6 +11,7 @@ public class SpeedrunConfig {
     private static final File CONFIG_FILE = new File("config/speedrun.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
+    public boolean enabled = true;
     public DisplayConfig display = new DisplayConfig();
     public TimerConfig timer = new TimerConfig();
     public BehaviorConfig behavior = new BehaviorConfig();
@@ -27,7 +28,7 @@ public class SpeedrunConfig {
     public static class TimerConfig {
         public String mode = "BOTH"; // "BOTH", "IGT", or "RTA"
         public int updateRateTicks = 2; // Update rate in ticks (2 ticks = 10 updates/sec for smooth milliseconds)
-        public boolean waitForFirstInput = false; // If true, IGT waits until player moves
+        public boolean waitForFirstInput = true; // Wait until player makes first input/movement before starting timer
         public boolean showMilliseconds = true; // Display milliseconds (.xxx)
     }
 
@@ -43,6 +44,7 @@ public class SpeedrunConfig {
         public boolean allowCheats = false;
         public boolean generateStructures = true;
         public boolean bonusChest = false;
+        public boolean firstLaunchPromptShown = false;
 
         public void resetToSpeedrunDefaults() {
             this.difficulty = "EASY";

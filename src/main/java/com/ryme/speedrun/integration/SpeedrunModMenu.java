@@ -3,8 +3,10 @@ package com.ryme.speedrun.integration;
 import com.ryme.speedrun.SpeedrunTracker;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public class SpeedrunModMenu implements ModMenuApi {
@@ -15,65 +17,54 @@ public class SpeedrunModMenu implements ModMenuApi {
 
     public static class ConfigScreen extends Screen {
         private final Screen parent;
+        private final Runnable onDoneCallback;
 
         public ConfigScreen(Screen parent) {
+            this(parent, null);
+        }
+
+        public ConfigScreen(Screen parent, Runnable onDoneCallback) {
             super(Component.literal("Speedrun? Settings"));
             this.parent = parent;
+            this.onDoneCallback = onDoneCallback;
         }
 
         @Override
         protected void init() {
-            int buttonWidth = 240;
-            int x = (this.width - buttonWidth) / 2;
-            int y = 14;
+            int colWidth = 150;
+            int colGap = 16;
+            int totalColsWidth = (colWidth * 2) + colGap;
+            int leftX = (this.width - totalColsWidth) / 2;
+            int rightX = leftX + colWidth + colGap;
 
-            // Zero-overhead mode
-            addRenderableWidget(Button.builder(
-                Component.literal("Zero-Overhead Mode: " + (SpeedrunTracker.config.display.zeroOverhead ? "§aEnabled" : "§7Disabled")),
-                btn -> {
-                    SpeedrunTracker.config.display.zeroOverhead = !SpeedrunTracker.config.display.zeroOverhead;
-                    SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Zero-Overhead Mode: " + (SpeedrunTracker.config.display.zeroOverhead ? "§aEnabled" : "§7Disabled")));
-                }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
+            int topY = 10;
+            int masterWidth = 160;
 
-            // Action bar HUD
+            // Master Mod Enable / Disable Toggle
             addRenderableWidget(Button.builder(
-                Component.literal("Action Bar HUD: " + (SpeedrunTracker.config.display.actionBar ? "§aEnabled" : "§cDisabled")),
+                Component.literal("Mod Status: " + (SpeedrunTracker.config.enabled ? "§aENABLED" : "§cDISABLED")),
                 btn -> {
-                    SpeedrunTracker.config.display.actionBar = !SpeedrunTracker.config.display.actionBar;
+                    SpeedrunTracker.config.enabled = !SpeedrunTracker.config.enabled;
                     SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Action Bar HUD: " + (SpeedrunTracker.config.display.actionBar ? "§aEnabled" : "§cDisabled")));
+                    btn.setMessage(Component.literal("Mod Status: " + (SpeedrunTracker.config.enabled ? "§aENABLED" : "§cDISABLED")));
                 }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
+            )
+            .tooltip(Tooltip.create(Component.literal("Master toggle: Enable or disable all SpeedRun? tracking, HUD, and fast reset features.")))
+            .bounds((this.width - masterWidth) / 2, topY, masterWidth, 20).build());
 
-            // TAB list display
-            addRenderableWidget(Button.builder(
-                Component.literal("TAB List Display: " + (SpeedrunTracker.config.display.tabList ? "§aEnabled" : "§cDisabled")),
-                btn -> {
-                    SpeedrunTracker.config.display.tabList = !SpeedrunTracker.config.display.tabList;
-                    SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("TAB List Display: " + (SpeedrunTracker.config.display.tabList ? "§aEnabled" : "§cDisabled")));
-                }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
+            int startY = topY + 24;
+            int rowSpacing = 22;
 
-            // Menu fast reset button
-            addRenderableWidget(Button.builder(
-                Component.literal("Menu Fast Reset Button: " + (SpeedrunTracker.config.display.showResetButtonInMenu ? "§aEnabled" : "§cDisabled")),
-                btn -> {
-                    SpeedrunTracker.config.display.showResetButtonInMenu = !SpeedrunTracker.config.display.showResetButtonInMenu;
-                    SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Menu Fast Reset Button: " + (SpeedrunTracker.config.display.showResetButtonInMenu ? "§aEnabled" : "§cDisabled")));
-                }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
+            // ==========================================
+            // LEFT COLUMN: Display & Stopwatch
+            // ==========================================
+            int leftY = startY;
+            addRenderableWidget(new StringWidget(leftX, leftY, colWidth, 12, Component.literal("§6§lDisplay & Stopwatch"), this.font));
+            leftY += 15;
 
             // Timer mode (BOTH / IGT / RTA)
             addRenderableWidget(Button.builder(
-                Component.literal("Timer Mode: §e" + SpeedrunTracker.config.timer.mode),
+                Component.literal("Mode: §e" + SpeedrunTracker.config.timer.mode),
                 btn -> {
                     if ("BOTH".equalsIgnoreCase(SpeedrunTracker.config.timer.mode)) {
                         SpeedrunTracker.config.timer.mode = "IGT";
@@ -83,36 +74,88 @@ public class SpeedrunModMenu implements ModMenuApi {
                         SpeedrunTracker.config.timer.mode = "BOTH";
                     }
                     SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Timer Mode: §e" + SpeedrunTracker.config.timer.mode));
+                    btn.setMessage(Component.literal("Mode: §e" + SpeedrunTracker.config.timer.mode));
                 }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
+            )
+            .tooltip(Tooltip.create(Component.literal("Toggle displayed stopwatch modes: In-Game Time (IGT), Real Time Attack (RTA), or Both.")))
+            .bounds(leftX, leftY, colWidth, 20).build());
+            leftY += rowSpacing;
 
-            // Wait for first move
+            // Milliseconds toggle (.xxx)
             addRenderableWidget(Button.builder(
-                Component.literal("Wait For First Move: " + (SpeedrunTracker.config.timer.waitForFirstInput ? "§aEnabled" : "§7Disabled")),
-                btn -> {
-                    SpeedrunTracker.config.timer.waitForFirstInput = !SpeedrunTracker.config.timer.waitForFirstInput;
-                    SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Wait For First Move: " + (SpeedrunTracker.config.timer.waitForFirstInput ? "§aEnabled" : "§7Disabled")));
-                }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
-
-            // Milliseconds display (.xxx)
-            addRenderableWidget(Button.builder(
-                Component.literal("Milliseconds (.xxx): " + (SpeedrunTracker.config.timer.showMilliseconds ? "§aEnabled" : "§7Disabled")),
+                Component.literal("Millis (.xxx): " + (SpeedrunTracker.config.timer.showMilliseconds ? "§aON" : "§7OFF")),
                 btn -> {
                     SpeedrunTracker.config.timer.showMilliseconds = !SpeedrunTracker.config.timer.showMilliseconds;
                     SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Milliseconds (.xxx): " + (SpeedrunTracker.config.timer.showMilliseconds ? "§aEnabled" : "§7Disabled")));
+                    btn.setMessage(Component.literal("Millis (.xxx): " + (SpeedrunTracker.config.timer.showMilliseconds ? "§aON" : "§7OFF")));
                 }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 22;
+            )
+            .tooltip(Tooltip.create(Component.literal("Display sub-second millisecond precision (.xxx) on the live timer.")))
+            .bounds(leftX, leftY, colWidth, 20).build());
+            leftY += rowSpacing;
 
-            // Template difficulty
+            // Action Bar HUD
+            addRenderableWidget(Button.builder(
+                Component.literal("Action Bar: " + (SpeedrunTracker.config.display.actionBar ? "§aON" : "§cOFF")),
+                btn -> {
+                    SpeedrunTracker.config.display.actionBar = !SpeedrunTracker.config.display.actionBar;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Action Bar: " + (SpeedrunTracker.config.display.actionBar ? "§aON" : "§cOFF")));
+                }
+            )
+            .tooltip(Tooltip.create(Component.literal("Display the live speedrun timer HUD directly above your hotbar.")))
+            .bounds(leftX, leftY, colWidth, 20).build());
+            leftY += rowSpacing;
+
+            // TAB list display
+            addRenderableWidget(Button.builder(
+                Component.literal("TAB List: " + (SpeedrunTracker.config.display.tabList ? "§aON" : "§cOFF")),
+                btn -> {
+                    SpeedrunTracker.config.display.tabList = !SpeedrunTracker.config.display.tabList;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("TAB List: " + (SpeedrunTracker.config.display.tabList ? "§aON" : "§cOFF")));
+                }
+            )
+            .tooltip(Tooltip.create(Component.literal("Show attempts and live timer in player list. (Note: Minecraft vanilla suppresses TAB in singleplayer).")))
+            .bounds(leftX, leftY, colWidth, 20).build());
+            leftY += rowSpacing;
+
+            // Chat Broadcast
+            addRenderableWidget(Button.builder(
+                Component.literal("Chat Broadcast: " + (SpeedrunTracker.config.display.chatBroadcast ? "§aON" : "§7OFF")),
+                btn -> {
+                    SpeedrunTracker.config.display.chatBroadcast = !SpeedrunTracker.config.display.chatBroadcast;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Chat Broadcast: " + (SpeedrunTracker.config.display.chatBroadcast ? "§aON" : "§7OFF")));
+                }
+            )
+            .tooltip(Tooltip.create(Component.literal("Broadcast completion message and final run time in chat when the dragon dies.")))
+            .bounds(leftX, leftY, colWidth, 20).build());
+            leftY += rowSpacing;
+
+            // Zero-Overhead Mode
+            addRenderableWidget(Button.builder(
+                Component.literal("Zero-Overhead: " + (SpeedrunTracker.config.display.zeroOverhead ? "§aON" : "§7OFF")),
+                btn -> {
+                    SpeedrunTracker.config.display.zeroOverhead = !SpeedrunTracker.config.display.zeroOverhead;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Zero-Overhead: " + (SpeedrunTracker.config.display.zeroOverhead ? "§aON" : "§7OFF")));
+                }
+            )
+            .tooltip(Tooltip.create(Component.literal("Suspend background tick processing when no players are logged in to eliminate server overhead.")))
+            .bounds(leftX, leftY, colWidth, 20).build());
+            leftY += rowSpacing;
+
+            // ==========================================
+            // RIGHT COLUMN: Template & World Rules
+            // ==========================================
+            int rightY = startY;
+            addRenderableWidget(new StringWidget(rightX, rightY, colWidth, 12, Component.literal("§6§lTemplate & Rules"), this.font));
+            rightY += 15;
+
+            // Template Difficulty
             Button diffBtn = Button.builder(
-                Component.literal("Template Difficulty: §e" + SpeedrunTracker.config.template.difficulty),
+                Component.literal("Difficulty: §e" + SpeedrunTracker.config.template.difficulty),
                 btn -> {
                     if ("EASY".equalsIgnoreCase(SpeedrunTracker.config.template.difficulty)) {
                         SpeedrunTracker.config.template.difficulty = "NORMAL";
@@ -122,47 +165,106 @@ public class SpeedrunModMenu implements ModMenuApi {
                         SpeedrunTracker.config.template.difficulty = "EASY";
                     }
                     SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Template Difficulty: §e" + SpeedrunTracker.config.template.difficulty));
+                    btn.setMessage(Component.literal("Difficulty: §e" + SpeedrunTracker.config.template.difficulty));
                 }
-            ).bounds(x, y, buttonWidth, 20).build();
+            )
+            .tooltip(Tooltip.create(Component.literal("World difficulty for newly generated attempts. Speedrun.com standard rule: Easy.")))
+            .bounds(rightX, rightY, colWidth, 20).build();
             addRenderableWidget(diffBtn);
-            y += 22;
+            rightY += rowSpacing;
 
-            // Template cheats
+            // Template Game Mode (SURVIVAL / HARDCORE)
+            Button modeBtn = Button.builder(
+                Component.literal("Game Mode: §e" + SpeedrunTracker.config.template.gameMode),
+                btn -> {
+                    if ("SURVIVAL".equalsIgnoreCase(SpeedrunTracker.config.template.gameMode)) {
+                        SpeedrunTracker.config.template.gameMode = "HARDCORE";
+                    } else {
+                        SpeedrunTracker.config.template.gameMode = "SURVIVAL";
+                    }
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Game Mode: §e" + SpeedrunTracker.config.template.gameMode));
+                }
+            )
+            .tooltip(Tooltip.create(Component.literal("Game mode for generated worlds (Survival or Hardcore).")))
+            .bounds(rightX, rightY, colWidth, 20).build();
+            addRenderableWidget(modeBtn);
+            rightY += rowSpacing;
+
+            // Template Cheats
             Button cheatBtn = Button.builder(
-                Component.literal("Template Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")),
+                Component.literal("Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")),
                 btn -> {
                     SpeedrunTracker.config.template.allowCheats = !SpeedrunTracker.config.template.allowCheats;
                     SpeedrunTracker.config.save();
-                    btn.setMessage(Component.literal("Template Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")));
+                    btn.setMessage(Component.literal("Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")));
                 }
-            ).bounds(x, y, buttonWidth, 20).build();
+            )
+            .tooltip(Tooltip.create(Component.literal("Allow commands in generated speedrun worlds. Speedrun.com standard rule: Disallowed.")))
+            .bounds(rightX, rightY, colWidth, 20).build();
             addRenderableWidget(cheatBtn);
-            y += 24;
+            rightY += rowSpacing;
 
-            // Reset to default speedrun rules
+            // Wait For First Move (Non-toggleable: permanent standard)
+            Button waitBtn = Button.builder(
+                Component.literal("Wait To Move: §aLocked (ON)"),
+                btn -> {}
+            )
+            .tooltip(Tooltip.create(Component.literal("IGT stays at 00:00.000 until first intentional movement. RTA runs continuously from world load.")))
+            .bounds(rightX, rightY, colWidth, 20).build();
+            waitBtn.active = false;
+            addRenderableWidget(waitBtn);
+            rightY += rowSpacing;
+
+            // Menu Fast Reset Button
             addRenderableWidget(Button.builder(
-                Component.literal("Reset to Speedrun Rules"),
+                Component.literal("Pause Menu Reset: " + (SpeedrunTracker.config.display.showResetButtonInMenu ? "§aON" : "§7OFF")),
+                btn -> {
+                    SpeedrunTracker.config.display.showResetButtonInMenu = !SpeedrunTracker.config.display.showResetButtonInMenu;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Pause Menu Reset: " + (SpeedrunTracker.config.display.showResetButtonInMenu ? "§aON" : "§7OFF")));
+                }
+            )
+            .tooltip(Tooltip.create(Component.literal("Display the Fast Reset button inside the Pause (ESC) menu.")))
+            .bounds(rightX, rightY, colWidth, 20).build());
+            rightY += rowSpacing;
+
+            // Reset Template to Defaults
+            addRenderableWidget(Button.builder(
+                Component.literal("§7Reset Rules to Default"),
                 btn -> {
                     SpeedrunTracker.config.template.resetToSpeedrunDefaults();
                     SpeedrunTracker.config.save();
-                    diffBtn.setMessage(Component.literal("Template Difficulty: §e" + SpeedrunTracker.config.template.difficulty));
-                    cheatBtn.setMessage(Component.literal("Template Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")));
+                    diffBtn.setMessage(Component.literal("Difficulty: §e" + SpeedrunTracker.config.template.difficulty));
+                    modeBtn.setMessage(Component.literal("Game Mode: §e" + SpeedrunTracker.config.template.gameMode));
+                    cheatBtn.setMessage(Component.literal("Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")));
                 }
-            ).bounds(x, y, buttonWidth, 20).build());
-            y += 24;
+            )
+            .tooltip(Tooltip.create(Component.literal("Reset world template rules (Difficulty: Easy, Survival, Cheats: Off) to standard leaderboard defaults.")))
+            .bounds(rightX, rightY, colWidth, 20).build());
+            rightY += rowSpacing;
 
-            // Done button
+            // ==========================================
+            // BOTTOM FOOTER: Done Button
+            // ==========================================
+            int bottomY = Math.max(leftY, rightY) + 6;
+            int doneWidth = 140;
             addRenderableWidget(Button.builder(Component.literal("Done"), btn -> {
-                if (this.minecraft != null) {
+                if (this.onDoneCallback != null) {
+                    this.onDoneCallback.run();
+                } else if (this.minecraft != null) {
                     this.minecraft.setScreenAndShow(this.parent);
                 }
-            }).bounds(x, y, buttonWidth, 20).build());
+            })
+            .tooltip(Tooltip.create(Component.literal("Save configuration and return.")))
+            .bounds((this.width - doneWidth) / 2, bottomY, doneWidth, 20).build());
         }
 
         @Override
         public void onClose() {
-            if (this.minecraft != null) {
+            if (this.onDoneCallback != null) {
+                this.onDoneCallback.run();
+            } else if (this.minecraft != null) {
                 this.minecraft.setScreenAndShow(this.parent);
             }
         }
