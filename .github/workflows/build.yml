@@ -20,11 +20,8 @@ jobs:
           distribution: 'temurin'
           java-version: '25'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build Mod Package
+        run: ./scripts/build.sh 0.1.0-beta
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
