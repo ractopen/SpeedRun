@@ -20,6 +20,7 @@ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SpeedrunTracker implements ModInitializer {
@@ -29,8 +30,9 @@ public class SpeedrunTracker implements ModInitializer {
     public static SpeedrunConfig config;
     private static int attempts = 1;
     private static long currentSeed = 0L;
-    private static long startTime = System.currentTimeMillis();
-    private static long endTime = 0L;
+    private static long startNano = System.nanoTime();
+    private static long endNano = 0L;
+    private static long rtaOffsetNanos = 0L;
     private static long igtTicks = 0L;
     private static final AtomicBoolean timerRunning = new AtomicBoolean(false);
     private static boolean hasPlayerMoved = false;
@@ -66,7 +68,8 @@ public class SpeedrunTracker implements ModInitializer {
                         } else if (!worldInitialized) {
                             // Resume on rejoining existing world
                             igtTicks = Math.max(0, gameTime);
-                            startTime = System.currentTimeMillis() - (igtTicks * 50L);
+                            startNano = System.nanoTime();
+                            rtaOffsetNanos = TimeUnit.MILLISECONDS.toNanos(igtTicks * 50L);
                             timerRunning.set(true);
                             hasPlayerMoved = true;
                         }
@@ -93,7 +96,7 @@ public class SpeedrunTracker implements ModInitializer {
         // Ender Dragon defeat
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
             if (config.behavior.stopOnDragonKill && entity instanceof EnderDragon && timerRunning.get()) {
-                endTime = System.currentTimeMillis();
+                endNano = System.nanoTime();
                 timerRunning.set(false);
                 String timeStr = formatTimer();
                 MinecraftServer srv = entity.level().getServer();
@@ -182,8 +185,9 @@ public class SpeedrunTracker implements ModInitializer {
     }
 
     private static void resetRun(MinecraftServer server, long seed) {
-        startTime = System.currentTimeMillis();
-        endTime = 0L;
+        startNano = System.nanoTime();
+        endNano = 0L;
+        rtaOffsetNanos = 0L;
         igtTicks = 0L;
         currentSeed = seed;
         timerRunning.set(true);
@@ -231,10 +235,43 @@ public class SpeedrunTracker implements ModInitializer {
     }
 
     public static long getElapsedMillis() {
-        if (!timerRunning.get() && endTime > 0) {
-            return Math.max(0, endTime - startTime);
+        long elapsedNanos = timerRunning.get()
+            ? (System.nanoTime() - startNano + rtaOffsetNanos)
+            : (endNano > 0 ? (endNano - startNano + rtaOffsetNanos) : rtaOffsetNanos);
+        return Math.max(0, TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+    }
+
+    public static void setTime(long millis) {
+        igtTicks = Math.max(0, millis / 50L);
+        startNano = System.nanoTime();
+        rtaOffsetNanos = TimeUnit.MILLISECONDS.toNanos(Math.max(0, millis));
+    }
+
+    public static long parseTimeInput(String input) {
+        if (input == null || input.isBlank()) return -1L;
+        input = input.trim().toLowerCase();
+        if (input.endsWith("s")) {
+            input = input.substring(0, input.length() - 1);
         }
-        return Math.max(0, System.currentTimeMillis() - startTime);
+        try {
+            if (input.contains(":")) {
+                String[] parts = input.split(":");
+                if (parts.length == 2) {
+                    long m = Long.parseLong(parts[0]);
+                    long s = Long.parseLong(parts[1]);
+                    return (m * 60 + s) * 1000L;
+                } else if (parts.length == 3) {
+                    long h = Long.parseLong(parts[0]);
+                    long m = Long.parseLong(parts[1]);
+                    long s = Long.parseLong(parts[2]);
+                    return (h * 3600 + m * 60 + s) * 1000L;
+                }
+            } else {
+                long s = Long.parseLong(input);
+                return s * 1000L;
+            }
+        } catch (NumberFormatException ignored) {}
+        return -1L;
     }
 
     private void initTabIntegration() {
@@ -329,13 +366,43 @@ public class SpeedrunTracker implements ModInitializer {
 
             dispatcher.register(Commands.literal("timer")
                 .executes(ctx -> {
-                    ctx.getSource().sendSuccess(() -> Component.literal("§bSpeedrun Timer: §f" + formatActionBarTimer() + " " + (timerRunning.get() ? "§a(Running)" : "§c(Finished)")), false);
+                    ctx.getSource().sendSuccess(() -> Component.literal(
+                        "§6§l» §bTimer: §f" + formatActionBarTimer() +
+                        " " + (timerRunning.get() ? "§a(Running)" : "§c(Finished)") +
+                        " §8│ §7Ticks: §f" + igtTicks
+                    ), false);
                     return 1;
                 })
+                .then(Commands.literal("get")
+                    .executes(ctx -> {
+                        ctx.getSource().sendSuccess(() -> Component.literal(
+                            "§6§l» §bTimer Breakdown: §eIGT: §f" + formatIGT() + " §8(" + igtTicks + " ticks) §8│ §eRTA: §f" + formatRTA() +
+                            " §8│ §7Mode: §f" + config.timer.mode +
+                            " " + (timerRunning.get() ? "§a(Running)" : "§c(Finished)")
+                        ), false);
+                        return 1;
+                    })
+                )
+                .then(Commands.literal("set")
+                    .then(Commands.argument("time", StringArgumentType.string())
+                        .executes(ctx -> {
+                            String input = StringArgumentType.getString(ctx, "time");
+                            long millis = parseTimeInput(input);
+                            if (millis < 0) {
+                                ctx.getSource().sendFailure(Component.literal("§cInvalid format! Use seconds (e.g. 90, 90s) or MM:SS (e.g. 01:30)"));
+                                return 0;
+                            }
+                            setTime(millis);
+                            ctx.getSource().sendSuccess(() -> Component.literal("§bSpeedrun Timer set to: §e" + formatTimeMillis(millis)), true);
+                            return 1;
+                        })
+                    )
+                )
                 .then(Commands.literal("reset")
                     .executes(ctx -> {
-                        startTime = System.currentTimeMillis();
-                        endTime = 0L;
+                        startNano = System.nanoTime();
+                        endNano = 0L;
+                        rtaOffsetNanos = 0L;
                         igtTicks = 0L;
                         hasPlayerMoved = !config.timer.waitForFirstInput;
                         spawnPosCaptured = false;
