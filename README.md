@@ -4,7 +4,7 @@
 
 <p>Minimalist attempt counter, stopwatch, and fast reset utility for Fabric Minecraft.</p>
 
-[![Release](https://img.shields.io/badge/Release-0.1.3--beta-2563EB?style=for-the-badge)](https://github.com/ractopen/SpeedRun/releases)
+[![Release](https://img.shields.io/badge/Release-0.1.4--beta-2563EB?style=for-the-badge)](https://github.com/ractopen/SpeedRun/releases)
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-DBD0C0?style=for-the-badge&logo=fabric&logoColor=black)](https://fabricmc.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.1_%E2%80%A2_26.2_%E2%80%A2_26.3-238636?style=for-the-badge&logo=minecraft&logoColor=white)](#supported-versions)
 [![License](https://img.shields.io/badge/License-MIT-blueviolet?style=for-the-badge)](LICENSE)
@@ -148,7 +148,7 @@ SpeedRun? is completely client-optional for multiplayer servers:
 
 ## Version
 
-Current release: `v0.1.3-beta`
+Current release: `v0.1.4-beta`
 
 ---
 

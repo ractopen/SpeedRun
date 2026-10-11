@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 
 public class SpeedrunClient implements ClientModInitializer {
@@ -29,13 +30,9 @@ public class SpeedrunClient implements ClientModInitializer {
                                 client.player.connection.sendCommand("worldreset reset");
                             }
                         } else {
-                            // If WorldReset is not installed, fast-trigger singleplayer reset
-                            if (client.player != null) {
-                                client.player.connection.sendCommand("attempts");
-                            }
-                            // Disconnect and let user quickly start fresh world
+                            // If WorldReset is not installed, cleanly disconnect singleplayer world to title
                             if (client.level != null) {
-                                screen.onClose();
+                                client.disconnectFromWorld(ClientLevel.DEFAULT_QUIT_MESSAGE);
                             }
                         }
                     }

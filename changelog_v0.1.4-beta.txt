@@ -1,0 +1,6 @@
+### Release Notes (v0.1.4-beta)
+
+* **Fast Reset Fixed**: Resolved an issue where clicking 'Fast Reset' in the pause menu would echo the attempt command in chat instead of resetting. It now integrates directly with WorldReset for instant in-game resets, or cleanly disconnects the singleplayer session to restart.
+* **Integrated WorldReset 0.2.2+26.3**: Paired with WorldReset in the client environment for sub-second, zero-menu resetting.
+* **Repository & Help Commands**: Added `/speedrun help`, `/speedrun repo`, `/attempts help`, and `/timer help` displaying interactive repository documentation and command guides.
+* **Millisecond Precision (.xxx)**: Stopwatch now displays exact milliseconds by default (`00:15.250 (IGT) │ 00:15.264 (RTA)`) with smooth 10 FPS updates and configurable `/timer millis` toggle.

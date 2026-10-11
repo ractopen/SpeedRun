@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -386,6 +387,12 @@ public class SpeedrunTracker implements ModInitializer {
                         return 1;
                     })
                 )
+                .then(Commands.literal("help")
+                    .executes(ctx -> {
+                        sendHelp(ctx.getSource());
+                        return 1;
+                    })
+                )
             );
 
             dispatcher.register(Commands.literal("timer")
@@ -472,8 +479,55 @@ public class SpeedrunTracker implements ModInitializer {
                         })
                     )
                 )
+                .then(Commands.literal("help")
+                    .executes(ctx -> {
+                        sendHelp(ctx.getSource());
+                        return 1;
+                    })
+                )
+            );
+
+            // /speedrun
+            dispatcher.register(Commands.literal("speedrun")
+                .executes(ctx -> {
+                    sendHelp(ctx.getSource());
+                    return 1;
+                })
+                .then(Commands.literal("help")
+                    .executes(ctx -> {
+                        sendHelp(ctx.getSource());
+                        return 1;
+                    })
+                )
+                .then(Commands.literal("repo")
+                    .executes(ctx -> {
+                        sendRepoLink(ctx.getSource());
+                        return 1;
+                    })
+                )
             );
         });
+    }
+
+    private static void sendHelp(CommandSourceStack source) {
+        source.sendSuccess(() -> Component.literal("§6§l=== SpeedRun? Mod Help ==="), false);
+        source.sendSuccess(() -> Component.literal("§7A minimalist attempt counter, stopwatch, and fast reset utility for Fabric."), false);
+        source.sendSuccess(() -> Component.literal("§eRepository: §b§nhttps://github.com/ractopen/SpeedRun"), false);
+        source.sendSuccess(() -> Component.literal("§6Commands:"), false);
+        source.sendSuccess(() -> Component.literal(" §e/attempts §7- View attempt counter"), false);
+        source.sendSuccess(() -> Component.literal(" §e/attempts set <n> §8| §e/attempts reset §7- Adjust attempt count"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer §7- View active timer"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer get §7- Full IGT and RTA breakdown"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer mode <BOTH|IGT|RTA> §7- Change stopwatch display"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer set <time> §7- Set timer (e.g. 90, 01:30.500)"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer millis <true|false> §7- Toggle millisecond display"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer waitformove <true|false> §7- Toggle wait for first input"), false);
+        source.sendSuccess(() -> Component.literal(" §e/timer reset §7- Reset stopwatch to 00:00"), false);
+        source.sendSuccess(() -> Component.literal("§6Pause Menu: §7Use the §eFast Reset§7 button to quickly restart runs."), false);
+    }
+
+    private static void sendRepoLink(CommandSourceStack source) {
+        source.sendSuccess(() -> Component.literal("§6§l» §eGitHub Repository: §b§nhttps://github.com/ractopen/SpeedRun"), false);
     }
 
     private static void loadAttempts() {
