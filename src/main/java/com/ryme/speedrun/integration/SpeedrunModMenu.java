@@ -25,7 +25,7 @@ public class SpeedrunModMenu implements ModMenuApi {
         protected void init() {
             int buttonWidth = 240;
             int x = (this.width - buttonWidth) / 2;
-            int y = 20;
+            int y = 14;
 
             // Zero-overhead mode
             addRenderableWidget(Button.builder(
@@ -36,7 +36,7 @@ public class SpeedrunModMenu implements ModMenuApi {
                     btn.setMessage(Component.literal("Zero-Overhead Mode: " + (SpeedrunTracker.config.display.zeroOverhead ? "§aEnabled" : "§7Disabled")));
                 }
             ).bounds(x, y, buttonWidth, 20).build());
-            y += 24;
+            y += 22;
 
             // Action bar HUD
             addRenderableWidget(Button.builder(
@@ -47,7 +47,7 @@ public class SpeedrunModMenu implements ModMenuApi {
                     btn.setMessage(Component.literal("Action Bar HUD: " + (SpeedrunTracker.config.display.actionBar ? "§aEnabled" : "§cDisabled")));
                 }
             ).bounds(x, y, buttonWidth, 20).build());
-            y += 24;
+            y += 22;
 
             // TAB list display
             addRenderableWidget(Button.builder(
@@ -58,7 +58,7 @@ public class SpeedrunModMenu implements ModMenuApi {
                     btn.setMessage(Component.literal("TAB List Display: " + (SpeedrunTracker.config.display.tabList ? "§aEnabled" : "§cDisabled")));
                 }
             ).bounds(x, y, buttonWidth, 20).build());
-            y += 24;
+            y += 22;
 
             // Menu fast reset button
             addRenderableWidget(Button.builder(
@@ -69,18 +69,35 @@ public class SpeedrunModMenu implements ModMenuApi {
                     btn.setMessage(Component.literal("Menu Fast Reset Button: " + (SpeedrunTracker.config.display.showResetButtonInMenu ? "§aEnabled" : "§cDisabled")));
                 }
             ).bounds(x, y, buttonWidth, 20).build());
-            y += 24;
+            y += 22;
 
-            // Timer mode (IGT / RTA)
+            // Timer mode (BOTH / IGT / RTA)
             addRenderableWidget(Button.builder(
                 Component.literal("Timer Mode: §e" + SpeedrunTracker.config.timer.mode),
                 btn -> {
-                    SpeedrunTracker.config.timer.mode = "IGT".equalsIgnoreCase(SpeedrunTracker.config.timer.mode) ? "RTA" : "IGT";
+                    if ("BOTH".equalsIgnoreCase(SpeedrunTracker.config.timer.mode)) {
+                        SpeedrunTracker.config.timer.mode = "IGT";
+                    } else if ("IGT".equalsIgnoreCase(SpeedrunTracker.config.timer.mode)) {
+                        SpeedrunTracker.config.timer.mode = "RTA";
+                    } else {
+                        SpeedrunTracker.config.timer.mode = "BOTH";
+                    }
                     SpeedrunTracker.config.save();
                     btn.setMessage(Component.literal("Timer Mode: §e" + SpeedrunTracker.config.timer.mode));
                 }
             ).bounds(x, y, buttonWidth, 20).build());
-            y += 24;
+            y += 22;
+
+            // Wait for first move
+            addRenderableWidget(Button.builder(
+                Component.literal("Wait For First Move: " + (SpeedrunTracker.config.timer.waitForFirstInput ? "§aEnabled" : "§7Disabled")),
+                btn -> {
+                    SpeedrunTracker.config.timer.waitForFirstInput = !SpeedrunTracker.config.timer.waitForFirstInput;
+                    SpeedrunTracker.config.save();
+                    btn.setMessage(Component.literal("Wait For First Move: " + (SpeedrunTracker.config.timer.waitForFirstInput ? "§aEnabled" : "§7Disabled")));
+                }
+            ).bounds(x, y, buttonWidth, 20).build());
+            y += 22;
 
             // Template difficulty
             Button diffBtn = Button.builder(
@@ -98,7 +115,7 @@ public class SpeedrunModMenu implements ModMenuApi {
                 }
             ).bounds(x, y, buttonWidth, 20).build();
             addRenderableWidget(diffBtn);
-            y += 24;
+            y += 22;
 
             // Template cheats
             Button cheatBtn = Button.builder(
@@ -110,7 +127,7 @@ public class SpeedrunModMenu implements ModMenuApi {
                 }
             ).bounds(x, y, buttonWidth, 20).build();
             addRenderableWidget(cheatBtn);
-            y += 26;
+            y += 24;
 
             // Reset to default speedrun rules
             addRenderableWidget(Button.builder(
@@ -122,7 +139,7 @@ public class SpeedrunModMenu implements ModMenuApi {
                     cheatBtn.setMessage(Component.literal("Template Cheats: " + (SpeedrunTracker.config.template.allowCheats ? "§cAllowed" : "§aDisallowed")));
                 }
             ).bounds(x, y, buttonWidth, 20).build());
-            y += 26;
+            y += 24;
 
             // Done button
             addRenderableWidget(Button.builder(Component.literal("Done"), btn -> {

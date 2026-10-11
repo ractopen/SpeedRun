@@ -21,7 +21,9 @@ jobs:
           java-version: '25'
 
       - name: Build Mod Package
-        run: ./scripts/build.sh 0.1.0-beta
+        run: |
+          VERSION=$(grep "mod_version" gradle.properties | cut -d'=' -f2 | tr -d ' ')
+          ./scripts/build.sh "$VERSION"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

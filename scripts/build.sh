@@ -5,6 +5,10 @@ VERSION="${1:-0.1.0-beta}"
 OUTPUT_DIR="build/libs"
 WORK_DIR="/tmp/speedrun_ci_build"
 
+if [ -z "$JAVA_HOME" ] && [ -d "/usr/lib/jvm/java-25-openjdk" ]; then
+    export JAVA_HOME="/usr/lib/jvm/java-25-openjdk"
+fi
+
 JAVAC_BIN="${JAVA_HOME:+$JAVA_HOME/bin/}javac"
 JAR_BIN="${JAVA_HOME:+$JAVA_HOME/bin/}jar"
 

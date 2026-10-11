@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.Commands;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.network.chat.Component;
@@ -30,9 +31,12 @@ public class SpeedrunTracker implements ModInitializer {
     private static long currentSeed = 0L;
     private static long startTime = System.currentTimeMillis();
     private static long endTime = 0L;
-    private static long igtTickStart = 0L;
-    private static long igtTickEnd = 0L;
-    private static final AtomicBoolean timerRunning = new AtomicBoolean(true);
+    private static long igtTicks = 0L;
+    private static final AtomicBoolean timerRunning = new AtomicBoolean(false);
+    private static boolean hasPlayerMoved = false;
+    private static double spawnX = 0, spawnY = 0, spawnZ = 0;
+    private static float spawnYRot = 0, spawnXRot = 0;
+    private static boolean spawnPosCaptured = false;
     private static int tickCounter = 0;
     private static boolean worldInitialized = false;
 
@@ -59,6 +63,12 @@ public class SpeedrunTracker implements ModInitializer {
                             attempts++;
                             saveAttempts();
                             resetRun(server, overworld.getSeed());
+                        } else if (!worldInitialized) {
+                            // Resume on rejoining existing world
+                            igtTicks = Math.max(0, gameTime);
+                            startTime = System.currentTimeMillis() - (igtTicks * 50L);
+                            timerRunning.set(true);
+                            hasPlayerMoved = true;
                         }
                     }
                 }
@@ -72,15 +82,18 @@ public class SpeedrunTracker implements ModInitializer {
             }
         });
 
+        // Server stopped lifecycle (cleans up state so new worlds trigger reset properly)
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            worldInitialized = false;
+            hasPlayerMoved = false;
+            spawnPosCaptured = false;
+            timerRunning.set(false);
+        });
+
         // Ender Dragon defeat
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
             if (config.behavior.stopOnDragonKill && entity instanceof EnderDragon && timerRunning.get()) {
                 endTime = System.currentTimeMillis();
-                try {
-                    ServerLevel lvl = (ServerLevel) entity.level();
-                    igtTickEnd = lvl.getGameTime();
-                } catch (Throwable ignored) {}
-
                 timerRunning.set(false);
                 String timeStr = formatTimer();
                 MinecraftServer srv = entity.level().getServer();
@@ -94,14 +107,49 @@ public class SpeedrunTracker implements ModInitializer {
             }
         });
 
-        // Action bar ticker (bypassed entirely in zero-overhead mode)
+        // Action bar ticker
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (config.display.zeroOverhead || !config.display.actionBar || !timerRunning.get()) return;
+            if (!timerRunning.get()) return;
+
+            // Movement detection if waitForFirstInput is enabled
+            if (config.timer.waitForFirstInput && !hasPlayerMoved) {
+                for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                    if (!spawnPosCaptured) {
+                        spawnX = player.getX();
+                        spawnY = player.getY();
+                        spawnZ = player.getZ();
+                        spawnYRot = player.getYRot();
+                        spawnXRot = player.getXRot();
+                        spawnPosCaptured = true;
+                    } else {
+                        double dx = player.getX() - spawnX;
+                        double dy = player.getY() - spawnY;
+                        double dz = player.getZ() - spawnZ;
+                        double distSq = dx * dx + dy * dy + dz * dz;
+                        float rotDiff = Math.abs(player.getYRot() - spawnYRot) + Math.abs(player.getXRot() - spawnXRot);
+                        if (distSq > 0.001 || rotDiff > 1.0f || player.isCrouching() || player.isSprinting() || player.isSwinging()) {
+                            hasPlayerMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!config.timer.waitForFirstInput || hasPlayerMoved) {
+                igtTicks++;
+            }
+
+            if (config.display.zeroOverhead || !config.display.actionBar) return;
 
             tickCounter++;
             if (tickCounter % config.timer.updateRateTicks != 0) return;
 
-            String barText = "§6Attempt #" + attempts + " §8│ §b" + formatTimer() + " §8(" + config.timer.mode + ")";
+            String barText;
+            if (config.timer.waitForFirstInput && !hasPlayerMoved) {
+                barText = "§6Attempt #" + attempts + " §8│ §eWaiting to move... §8│ §f" + formatRTA() + " §8(RTA)";
+            } else {
+                barText = "§6Attempt #" + attempts + " §8│ " + formatActionBarTimer();
+            }
             Component barComponent = Component.literal(barText);
 
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -136,17 +184,11 @@ public class SpeedrunTracker implements ModInitializer {
     private static void resetRun(MinecraftServer server, long seed) {
         startTime = System.currentTimeMillis();
         endTime = 0L;
+        igtTicks = 0L;
         currentSeed = seed;
         timerRunning.set(true);
-
-        try {
-            if (server != null && server.overworld() != null) {
-                igtTickStart = server.overworld().getGameTime();
-            }
-        } catch (Throwable ignored) {
-            igtTickStart = 0L;
-        }
-        igtTickEnd = 0L;
+        hasPlayerMoved = !config.timer.waitForFirstInput;
+        spawnPosCaptured = false;
 
         SpeedrunAPI.dispatchReset(attempts, seed, server);
     }
@@ -214,17 +256,30 @@ public class SpeedrunTracker implements ModInitializer {
                 tab.getPlaceholderManager().registerServerPlaceholder("%speedrun_timer%", 500, SpeedrunTracker::formatTimer);
                 tab.getPlaceholderManager().registerServerPlaceholder("%timer%", 500, SpeedrunTracker::formatTimer);
                 tab.getPlaceholderManager().registerServerPlaceholder("%speedrun_rta%", 500, SpeedrunTracker::formatRTA);
-                tab.getPlaceholderManager().registerServerPlaceholder("%speedrun_igt%", 500, SpeedrunTracker::formatTimer);
+                tab.getPlaceholderManager().registerServerPlaceholder("%speedrun_igt%", 500, SpeedrunTracker::formatIGT);
                 tab.getPlaceholderManager().registerServerPlaceholder("%seed%", 2000, () -> String.valueOf(currentSeed));
             }
         } catch (Throwable ignored) {}
     }
 
     public static String formatTimer() {
-        if ("IGT".equalsIgnoreCase(config.timer.mode)) {
+        String mode = config.timer.mode != null ? config.timer.mode.toUpperCase() : "BOTH";
+        if ("IGT".equals(mode)) {
             return formatIGT();
+        } else if ("RTA".equals(mode)) {
+            return formatRTA();
         }
-        return formatRTA();
+        return formatIGT() + " / " + formatRTA();
+    }
+
+    public static String formatActionBarTimer() {
+        String mode = config.timer.mode != null ? config.timer.mode.toUpperCase() : "BOTH";
+        if ("IGT".equals(mode)) {
+            return "§b" + formatIGT() + " §8(IGT)";
+        } else if ("RTA".equals(mode)) {
+            return "§f" + formatRTA() + " §8(RTA)";
+        }
+        return "§b" + formatIGT() + " §8(IGT) §8│ §f" + formatRTA() + " §8(RTA)";
     }
 
     public static String formatRTA() {
@@ -232,11 +287,7 @@ public class SpeedrunTracker implements ModInitializer {
     }
 
     public static String formatIGT() {
-        long currentTicks = timerRunning.get()
-            ? (igtTickStart > 0 ? (System.currentTimeMillis() - startTime) / 50 : 0)
-            : (igtTickEnd - igtTickStart);
-        if (currentTicks < 0) currentTicks = 0;
-        return formatTimeMillis(currentTicks * 50);
+        return formatTimeMillis(igtTicks * 50L);
     }
 
     private static String formatTimeMillis(long millis) {
@@ -278,13 +329,16 @@ public class SpeedrunTracker implements ModInitializer {
 
             dispatcher.register(Commands.literal("timer")
                 .executes(ctx -> {
-                    ctx.getSource().sendSuccess(() -> Component.literal("§bSpeedrun Timer: §f" + formatTimer() + " §8(" + config.timer.mode + ") " + (timerRunning.get() ? "§a(Running)" : "§c(Finished)")), false);
+                    ctx.getSource().sendSuccess(() -> Component.literal("§bSpeedrun Timer: §f" + formatActionBarTimer() + " " + (timerRunning.get() ? "§a(Running)" : "§c(Finished)")), false);
                     return 1;
                 })
                 .then(Commands.literal("reset")
                     .executes(ctx -> {
                         startTime = System.currentTimeMillis();
                         endTime = 0L;
+                        igtTicks = 0L;
+                        hasPlayerMoved = !config.timer.waitForFirstInput;
+                        spawnPosCaptured = false;
                         timerRunning.set(true);
                         ctx.getSource().sendSuccess(() -> Component.literal("§bSpeedrun Timer reset to 00:00"), true);
                         return 1;
@@ -294,14 +348,25 @@ public class SpeedrunTracker implements ModInitializer {
                     .then(Commands.argument("mode", StringArgumentType.word())
                         .executes(ctx -> {
                             String m = StringArgumentType.getString(ctx, "mode").toUpperCase();
-                            if ("IGT".equals(m) || "RTA".equals(m)) {
+                            if ("IGT".equals(m) || "RTA".equals(m) || "BOTH".equals(m)) {
                                 config.timer.mode = m;
                                 config.save();
                                 ctx.getSource().sendSuccess(() -> Component.literal("§bTimer mode set to: §e" + m), true);
                                 return 1;
                             }
-                            ctx.getSource().sendFailure(Component.literal("§cChoose 'IGT' or 'RTA'"));
+                            ctx.getSource().sendFailure(Component.literal("§cChoose 'BOTH', 'IGT', or 'RTA'"));
                             return 0;
+                        })
+                    )
+                )
+                .then(Commands.literal("waitformove")
+                    .then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> {
+                            boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+                            config.timer.waitForFirstInput = enabled;
+                            config.save();
+                            ctx.getSource().sendSuccess(() -> Component.literal("§bWait for first move: " + (enabled ? "§aEnabled" : "§cDisabled")), true);
+                            return 1;
                         })
                     )
                 )
